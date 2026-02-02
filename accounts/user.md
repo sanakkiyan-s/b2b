@@ -1,6 +1,6 @@
 .\venv\Scripts\Activate.ps1
 
-
+stripe listen --forward-to localhost:8000/api/payments/webhook/
 
 
 create tenant

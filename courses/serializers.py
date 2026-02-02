@@ -28,12 +28,12 @@ class SubModuleSerializer(serializers.ModelSerializer):
         return sub_module
 
 class ModuleSerializer(serializers.ModelSerializer):
-    # submodules = SubModuleSerializer(many=True, read_only=True)
+    submodules = SubModuleSerializer(many=True, read_only=True)
     tenant = serializers.SlugRelatedField(queryset=Tenant.objects.all(), slug_field='slug', required=False)
     course = serializers.SlugRelatedField(queryset=Course.objects.all(), slug_field='slug', required=False)
     class Meta:
         model = Module
-        fields = ['id', 'tenant', 'course', 'title', 'slug', 'description', 'order']
+        fields = ['id', 'tenant', 'course', 'title', 'slug', 'description', 'order','submodules']
         read_only_fields = ['id', 'tenant', 'slug']
 
     def validate_title(self, value):
@@ -52,7 +52,7 @@ class ModuleSerializer(serializers.ModelSerializer):
         return module
 
 class CourseSerializer(serializers.ModelSerializer):
-    # modules = ModuleSerializer(many=True, read_only=True)
+    modules = ModuleSerializer(many=True, read_only=True)
     created_by = serializers.CharField(source='created_by.username', read_only=True)
     tenant = serializers.SlugRelatedField(queryset=Tenant.objects.all(), slug_field='slug', required=False)
     class Meta:
@@ -60,7 +60,7 @@ class CourseSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'tenant', 'name','slug', 'description', 'price', 'is_free', 
             'status', 'created_by', 
-            'created_at', 'updated_at', #'modules'
+            'created_at', 'updated_at', 'modules'
         ]
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at', 'slug']
 

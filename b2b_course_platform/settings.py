@@ -58,7 +58,7 @@ AUTH_USER_MODEL = 'accounts.User'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'tenants.authentication.TenantAwareJWTAuthentication',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     "DEFAULT_FILTER_BACKENDS": [
@@ -77,6 +77,17 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Multi-tenant LMS API',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SECURITY': [{'Bearer': []}],
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'Bearer': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+        }
+    }
 }
 
 MIDDLEWARE = [
@@ -85,7 +96,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'tenants.middleware.CurrentUserMiddleware',  # Must be after AuthenticationMiddleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -156,3 +166,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+
+# STRIPE PAYMENT CONFIGURATION
+import os
+
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+
+# Frontend URLs for Stripe checkout redirects
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+STRIPE_SUCCESS_URL = f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
+STRIPE_CANCEL_URL = f"{FRONTEND_URL}/payment/cancel"
