@@ -199,6 +199,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
                 'total_revenue': completed.aggregate(Sum('amount'))['amount__sum'] or 0,
                 'total_transactions': tenant_payments.count(),
                 'completed_payments': completed.count(),
+                'total_amount': tenant_payments.aggregate(Sum('amount'))['amount__sum'] or 0,
                 'pending_payments': tenant_payments.filter(status=Payment.Status.PENDING).count(),
                 'failed_payments': tenant_payments.filter(status=Payment.Status.FAILED).count(),
             })
@@ -212,6 +213,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
                 'total_revenue': completed.aggregate(Sum('amount'))['amount__sum'] or 0,
                 'total_transactions': tenant_payments.count(),
                 'completed_payments': completed.count(),
+                'total_amount': tenant_payments.aggregate(Sum('amount'))['amount__sum'] or 0,
                 'pending_payments': tenant_payments.filter(status=Payment.Status.PENDING).count(),
                 'failed_payments': tenant_payments.filter(status=Payment.Status.FAILED).count(),
             })
@@ -224,6 +226,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             'total_revenue': all_completed.aggregate(Sum('amount'))['amount__sum'] or 0,
             'total_transactions': Payment.objects.count(),
             'completed_payments': all_completed.count(),
+            'total_amount': all_completed.aggregate(Sum('amount'))['amount__sum'] or 0,
             'pending_payments': Payment.objects.filter(status=Payment.Status.PENDING).count(),
             'failed_payments': Payment.objects.filter(status=Payment.Status.FAILED).count(),
         }
