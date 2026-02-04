@@ -84,7 +84,6 @@ class CourseSkillSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         tenant=validated_data.pop('tenant', None)
         if request.user.role == 'TENANT_ADMIN':
-            print("setting the tenanat")
             tenant = request.user.tenant
         return CourseSkill.objects.create(tenant=tenant, **validated_data)
 

@@ -24,3 +24,6 @@ class UserViewSet(viewsets.ModelViewSet):
             return User.objects.filter(tenant=user.tenant)
 
         return User.objects.filter(pk=user.pk)
+
+        
+

@@ -26,3 +26,4 @@ class TenantViewSet(viewsets.ModelViewSet):
         elif user.role == 'TENANT_ADMIN' and user.tenant:
             return Tenant.objects.filter(slug=user.tenant.slug)
         return Tenant.objects.none()
+

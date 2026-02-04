@@ -12,9 +12,8 @@ from .serializers import (
     SubModuleProgressSerializer,
     MarkCompleteSerializer
 )
-from accounts.permissions import IsTenantAdmin, IsTenantUser
+from accounts.permissions import IsTenantAdmin, IsTenantUser , only_tenant_admin
 from courses.models import SubModule
-
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
     """
@@ -61,7 +60,11 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         user = serializer.validated_data['user']
         course = serializer.validated_data['course']
-
+        if course.status == "ARCHIVED":
+            return Response(
+                {'error': 'Course is archived'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         enrollment = Enrollment.objects.create(
             tenant=request.user.tenant,
             user=user,

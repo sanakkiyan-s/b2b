@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Course, Module, SubModule
 from .serializers import CourseSerializer, ModuleSerializer, SubModuleSerializer
-from accounts.permissions import IsTenantAdmin, IsTenantUser
+from accounts.permissions import IsTenantAdmin, IsTenantUser , only_tenant_admin
 from drf_spectacular.utils import extend_schema, OpenApiExample
 # Create your views here.
 
@@ -22,7 +22,7 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsTenantAdmin()]
+            return [only_tenant_admin()]
         permission_classes = [IsTenantUser]
         return [permission() for permission in permission_classes]
 
@@ -32,7 +32,6 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
-
 
     @action(detail=True, methods=['get'])
     def modules(self, request, slug=None):
@@ -48,7 +47,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsTenantAdmin()]
+            return [only_tenant_admin()]
         permission_classes = [IsTenantUser, IsTenantAdmin]
         return [permission() for permission in permission_classes]
     def get_queryset(self):
@@ -72,7 +71,7 @@ class SubModuleViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsTenantAdmin()]
+            return [only_tenant_admin()]
         permission_classes = [IsTenantUser, IsTenantAdmin]
         return [permission() for permission in permission_classes]
     def get_queryset(self):

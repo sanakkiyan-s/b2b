@@ -18,6 +18,7 @@ from .serializers import (
     StripeCheckoutResponseSerializer,
 )
 from .stripe_service import StripeService
+from accounts.models import User
 from accounts.permissions import IsSuperAdmin, IsTenantAdmin, IsTenantUser
 from courses.models import Course
 from enrollments.models import Enrollment
@@ -75,6 +76,11 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
 
         try:
             course = Course.objects.get(slug=course_slug)
+            if course.status == "ARCHIVED":
+                return Response(
+                    {'error': 'Course is archived'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         except Course.DoesNotExist:
             return Response(
                 {'error': 'Course not found'},
@@ -196,6 +202,9 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             completed = tenant_payments.filter(status=Payment.Status.COMPLETED)
             return Response({
                 'tenant_name': tenant.name,
+                'user_count': tenant.users.count(),
+                'course_count': tenant.courses.count(),
+                'enrollment_count': tenant.enrollments.count(),
                 'total_revenue': completed.aggregate(Sum('amount'))['amount__sum'] or 0,
                 'total_transactions': tenant_payments.count(),
                 'completed_payments': completed.count(),
@@ -210,6 +219,9 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
 
             analytics.append({
                 'tenant_name': tenant.name,
+                'user_count': tenant.users.count(),
+                'course_count': tenant.courses.count(),
+                'enrollment_count': tenant.enrollments.count(),
                 'total_revenue': completed.aggregate(Sum('amount'))['amount__sum'] or 0,
                 'total_transactions': tenant_payments.count(),
                 'completed_payments': completed.count(),
@@ -223,6 +235,9 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
         all_completed = Payment.objects.filter(status=Payment.Status.COMPLETED)
         platform_total = {
             'tenant_name': 'PLATFORM_TOTAL',
+            'user_count': User.objects.exclude(role__in=['SUPER_ADMIN', 'TENANT_ADMIN']).count(),
+            'course_count': Course.objects.count(),
+            'enrollment_count': Enrollment.objects.count(),
             'total_revenue': all_completed.aggregate(Sum('amount'))['amount__sum'] or 0,
             'total_transactions': Payment.objects.count(),
             'completed_payments': all_completed.count(),

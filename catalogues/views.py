@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from .models import Catalogue, Course
 from .serializers import CatalogueSerializer, CourseSerializer, CatalogueAddRemoveSerializer
-from accounts.permissions import IsTenantAdmin, IsTenantUser
+from accounts.permissions import IsTenantAdmin, IsTenantUser , only_tenant_admin
 from django.db.models import Max
 from django.contrib.auth import get_user_model
 
@@ -21,12 +21,12 @@ class CatalogueViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsTenantAdmin()]
+            return [only_tenant_admin()]
         permission_classes = [IsTenantUser]
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
-        #user = self.request.user
+        user = self.request.user
         #set_current_user(user)
         if user.role != 'TENANT_USER':
             return Catalogue.objects.for_current_user()

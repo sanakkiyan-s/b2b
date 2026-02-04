@@ -45,12 +45,6 @@ class Payment(AbstractTenantModel):
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
-    # Additional fields for tracking
-    gateway_response = models.JSONField(
-        null=True,
-        blank=True,
-        help_text="Raw response from payment gateway"
-    )
     
     # Stripe-specific fields
     stripe_checkout_session_id = models.CharField(

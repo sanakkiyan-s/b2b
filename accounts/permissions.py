@@ -34,6 +34,12 @@ class IsTenantAdmin(permissions.BasePermission):
             return obj.tenant_id == request.user.tenant_id
         return False
 
+class only_tenant_admin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.role == 'TENANT_ADMIN'
+
 
 
 class IsTenantUser(permissions.BasePermission):

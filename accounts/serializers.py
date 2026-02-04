@@ -2,7 +2,8 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework.validators import UniqueValidator
 from tenants.models import Tenant
-
+from skills.models import UserSkill
+from skills.serializers import UserSkillSerializer
 
 
 User = get_user_model()
@@ -14,9 +15,11 @@ class UserSerializer(serializers.ModelSerializer):
         slug_field='slug', 
         required=False
     )
+    get_skills = UserSkillSerializer(many=True, read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'tenant']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'tenant', 'get_skills']
         read_only_fields = ['id', 'role', 'tenant'] 
 
 class UserCreateSerializer(serializers.ModelSerializer):

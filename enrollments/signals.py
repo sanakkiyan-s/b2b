@@ -103,3 +103,30 @@ def update_user_skills(enrollment):
         user_skill.proficiency = min(proficiency, 100)  # Cap at 100%
         user_skill.courses_completed = completed_courses_for_skill
         user_skill.save()
+
+
+@receiver(post_save, sender=Enrollment)
+def create_user_skills_on_enrollment(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    user = instance.user
+    course = instance.course
+    tenant = instance.tenant
+
+    # Get all skills associated with this course
+    course_skills = CourseSkill.objects.filter(course=course)
+
+    for course_skill in course_skills:
+        skill = course_skill.skill
+        
+        # Create UserSkill record if it doesn't exist
+        UserSkill.objects.get_or_create(
+            user=user,
+            skill=skill,
+            tenant=tenant,
+            defaults={
+                'proficiency': 0.00,
+                'courses_completed': 0
+            }
+        )
