@@ -1,3 +1,4 @@
+from .models import AuditLog
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework.validators import UniqueValidator
@@ -85,3 +86,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
             )
         return user
 
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    user_email = serializers.CharField(source='user.email', read_only=True)
+
+    class Meta:
+        model = AuditLog
+        fields = ['id', 'user', 'user_email', 'action', 'model_name', 'object_id', 
+                  'object_repr', 'details', 'ip_address', 'timestamp']
+        read_only_fields = fields

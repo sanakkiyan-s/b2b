@@ -71,3 +71,32 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def get_skills(self):
         return self.user_skills.all()
+
+
+class AuditLog(models.Model):
+    class Action(models.TextChoices):
+        CREATE = 'CREATE', _('Create')
+        UPDATE = 'UPDATE', _('Update')
+        DELETE = 'DELETE', _('Delete')
+        LOGIN = 'LOGIN', _('Login')
+        LOGOUT = 'LOGOUT', _('Logout')
+
+    user = models.ForeignKey(
+        'User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='audit_logs'
+    )
+    action = models.CharField(max_length=20, choices=Action.choices)
+    model_name = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=100, null=True, blank=True)
+    object_repr = models.CharField(max_length=255, blank=True)
+    details = models.JSONField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.user} - {self.action} - {self.model_name} - {self.timestamp}"
