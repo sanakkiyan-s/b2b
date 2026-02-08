@@ -3,6 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
 from datetime import timedelta
+import logging
+
 from .models import Enrollment, SubModuleProgress
 from .serializers import (
     EnrollmentListSerializer,
@@ -14,6 +16,8 @@ from .serializers import (
 )
 from accounts.permissions import IsTenantAdmin, IsTenantUser , only_tenant_admin
 from courses.models import SubModule
+
+logger = logging.getLogger(__name__)
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
     """
@@ -41,13 +45,19 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        logger.debug(f"User {user.email} ({user.role}) accessing enrollments")
+        
         if user.role == 'SUPER_ADMIN':
             return Enrollment.objects.all()
-        if user.role == 'TENANT_ADMIN' :
+        if user.role == 'TENANT_ADMIN':
             return Enrollment.objects.filter(tenant=user.tenant)
-        if user.role == 'TENANT_USER' :
+        if user.role == 'TENANT_USER':
             return Enrollment.objects.filter(user=user, tenant=user.tenant)
         return Enrollment.objects.none()
+
+    def perform_create(self, serializer):
+        enrollment = serializer.save()
+        logger.info(f"Enrollment created: {enrollment.user.email} -> {enrollment.course.name}")
 
     @action(detail=False, methods=['post'])
     def assign_course(self, request):
@@ -60,17 +70,22 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         user = serializer.validated_data['user']
         course = serializer.validated_data['course']
+        
         if course.status == "ARCHIVED":
+            logger.warning(f"Attempt to assign archived course {course.name} by {request.user.email}")
             return Response(
                 {'error': 'Course is archived'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
         enrollment = Enrollment.objects.create(
             tenant=request.user.tenant,
             user=user,
             course=course,
             assigned_by=request.user
         )
+        
+        logger.info(f"Course assigned: {user.email} -> {course.name} by {request.user.email}")
 
         return Response(
             EnrollmentListSerializer(enrollment).data,

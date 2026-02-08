@@ -9,8 +9,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.http import HttpResponse
 import json
-from tenants.models import Tenant
+import logging
 
+from tenants.models import Tenant
 from .models import Payment
 from .serializers import (
     PaymentSerializer,
@@ -22,9 +23,9 @@ from accounts.models import User
 from accounts.permissions import IsSuperAdmin, IsTenantAdmin, IsTenantUser
 from courses.models import Course
 from enrollments.models import Enrollment
-
-
 from drf_spectacular.utils import extend_schema
+
+logger = logging.getLogger(__name__)
 
 class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -134,6 +135,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             amount=course.price,
             status=Payment.Status.PENDING
         )
+        logger.info(f"Payment record created: {user.email} for course '{course.name}' (${course.price})")
 
         # Create Stripe Checkout Session
         try:
@@ -146,6 +148,8 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             # Update payment with Stripe session ID
             payment.stripe_checkout_session_id = checkout_data['session_id']
             payment.save()
+            
+            logger.info(f"Stripe checkout session created: {checkout_data['session_id']} for {user.email}")
 
             return Response({
                 'checkout_url': checkout_data['checkout_url'],
@@ -157,6 +161,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
         except Exception as e:
             payment.status = Payment.Status.FAILED
             payment.save()
+            logger.error(f"Stripe checkout failed for {user.email}: {str(e)}")
             return Response(
                 {'error': f'Failed to create checkout session: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -278,7 +283,10 @@ class StripeWebhookView(APIView):
         try:
             event = StripeService.verify_webhook_signature(payload, sig_header)
         except ValueError as e:
+            logger.error(f"Stripe webhook signature verification failed: {str(e)}")
             return HttpResponse(str(e), status=400)
+        
+        logger.info(f"Stripe webhook received: {event['type']}")
 
         # Handle the event
         if event['type'] == 'checkout.session.completed':
@@ -302,6 +310,7 @@ class StripeWebhookView(APIView):
         try:
             payment = Payment.objects.get(stripe_checkout_session_id=session_id)
         except Payment.DoesNotExist:
+            logger.warning(f"Payment not found for session {session_id}")
             return  # Payment not found, possibly created elsewhere
 
         # Update payment status
@@ -310,14 +319,19 @@ class StripeWebhookView(APIView):
         payment.completed_at = timezone.now()
         payment.gateway_response = dict(session)
         payment.save()
+        
+        logger.info(f"Payment completed: {payment.user.email} for '{payment.course.name}' (${payment.amount})")
 
         # Create enrollment
-        Enrollment.objects.get_or_create(
+        enrollment, created = Enrollment.objects.get_or_create(
             tenant=payment.tenant,
             user=payment.user,
             course=payment.course,
             defaults={'status': 'NOT_STARTED'}
         )
+        
+        if created:
+            logger.info(f"Enrollment created after payment: {payment.user.email} -> {payment.course.name}")
 
     def handle_checkout_expired(self, session):
         """
@@ -330,6 +344,7 @@ class StripeWebhookView(APIView):
             if payment.status == Payment.Status.PENDING:
                 payment.status = Payment.Status.FAILED
                 payment.save()
+                logger.warning(f"Checkout session expired: {session_id} for {payment.user.email}")
         except Payment.DoesNotExist:
             pass
 
@@ -344,5 +359,7 @@ class StripeWebhookView(APIView):
             payment.status = Payment.Status.FAILED
             payment.gateway_response = dict(payment_intent)
             payment.save()
+            logger.error(f"Payment failed: {payment.user.email} for '{payment.course.name}'")
         except Payment.DoesNotExist:
             pass
+
