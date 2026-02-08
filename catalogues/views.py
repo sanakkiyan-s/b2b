@@ -32,7 +32,7 @@ class CatalogueViewSet(viewsets.ModelViewSet):
             return Catalogue.objects.for_current_user()
         if user.tenant:
             return Catalogue.objects.for_tenant(user.tenant).filter(is_active=True)
-        return Catalogue.objects.none()
+
 
     def perform_create(self, serializer):
         serializer.save()
@@ -40,7 +40,7 @@ class CatalogueViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def courses(self, request, slug=None):
         catalogue = self.get_object()
-        courses = catalogue.courses.all()
+        courses = catalogue.courses.filter(status='PUBLISHED')
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
 

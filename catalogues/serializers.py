@@ -4,6 +4,7 @@ from tenants.models import Tenant
 from courses.models import Course
 from courses.serializers import CourseSerializer
 
+
 class CatalogueSerializer(serializers.ModelSerializer):
     courses = serializers.SerializerMethodField()
     tenant = serializers.SlugRelatedField(queryset=Tenant.objects.all(), slug_field='slug', required=False)
@@ -14,8 +15,8 @@ class CatalogueSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'tenant']
 
     def get_courses(self, obj):
-        published_courses = obj.courses.filter(status='PUBLISHED')
-        return CourseSerializer(published_courses, many=True).data
+        published_courses = obj.courses.all().count()
+        return published_courses
 
     def validate_name(self, value):
         request = self.context.get('request')

@@ -6,6 +6,8 @@ from rest_framework.decorators import action
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Count
 from django.utils import timezone
 from datetime import timedelta
@@ -13,6 +15,7 @@ from datetime import timedelta
 from .serializers import UserSerializer, UserCreateSerializer, AuditLogSerializer
 from .models import AuditLog
 from .permissions import ManageUser, IsSuperAdmin
+from .filters import UserFilter
 from tenants.models import Tenant
 from courses.models import Course
 from enrollments.models import Enrollment
@@ -25,6 +28,12 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     permission_classes = [ManageUser]
     lookup_field = 'username'
+    
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = UserFilter
+    search_fields = ['email', 'username', 'first_name', 'last_name']
+    ordering_fields = ['date_joined','last_login']
+    ordering = ['-date_joined']
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -34,11 +43,13 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'SUPER_ADMIN':
-            return User.objects.all()
-        if user.role == 'TENANT_ADMIN':
-            return User.objects.filter(tenant=user.tenant)
+            queryset = User.objects.all()
+        elif user.role == 'TENANT_ADMIN':
+            queryset = User.objects.filter(tenant=user.tenant)
+        elif user.role == 'TENANT_USER':
+            queryset = User.objects.filter(id=user.id)
 
-        return User.objects.filter(pk=user.pk)
+        return queryset
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):

@@ -2,6 +2,12 @@
 
 stripe listen --forward-to localhost:8000/api/payments/webhook/
 
+superadmin
+
+{
+  "email": "superadmin@platform.com",
+  "password": "SuperAdmin123!"
+}
 
 create tenant
 
@@ -65,7 +71,7 @@ Amazon admin
 
 
 
-users of tenant infosys
+users of tenant infosys make it user 1 and user2 
 
 {
     "email": "user@infosys.com",
@@ -76,7 +82,7 @@ users of tenant infosys
     "tenant": "infosys"
 }
 
-users of tenant ibm
+users of tenant ibm make it user 1 and user2 
 
 {
     "email": "user@ibm.com",
@@ -87,7 +93,7 @@ users of tenant ibm
     "tenant": "ibm"
 }
 
-users of tenant amazon
+users of tenant amazon make it user 1 and user2 
 
 {
     "email": "user@amazon.com",

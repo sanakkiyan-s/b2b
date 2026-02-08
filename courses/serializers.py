@@ -1,14 +1,24 @@
 from rest_framework import serializers
 from .models import Course, Module, SubModule
 from tenants.models import Tenant
+from enrollments.models import Enrollment
 # ==================== Course Structure Serializers ====================
 
 class SubModuleSerializer(serializers.ModelSerializer):
     tenant = serializers.SlugRelatedField(queryset=Tenant.objects.all(), slug_field='slug', required=False)
-    module = serializers.SlugRelatedField(queryset=Module.objects.all(), slug_field='slug', required=False)
+    #module = serializers.SlugRelatedField(queryset=Module.objects.all(), slug_field='slug', required=False)
     class Meta:
         model = SubModule
-        fields = ['id', 'tenant', 'module', 'title', 'slug', 'type', 'content_url', 'content_text', 'order']
+        fields = ['id', 
+        'tenant', 
+        #'module', 
+        'title', 
+        'slug', 
+        'type', 
+        'content_url', 
+        'content_text', 
+        'order'
+        ]
         read_only_fields = ['id', 'tenant', 'slug']
 
     def validate_title(self, value):
@@ -28,16 +38,27 @@ class SubModuleSerializer(serializers.ModelSerializer):
         return sub_module
 
 class ModuleSerializer(serializers.ModelSerializer):
-    submodules = SubModuleSerializer(many=True, read_only=True)
+    #submodules = SubModuleSerializer(many=True, read_only=True)
     tenant = serializers.SlugRelatedField(queryset=Tenant.objects.all(), slug_field='slug', required=False)
     course = serializers.SlugRelatedField(queryset=Course.objects.all(), slug_field='slug', required=False)
+    submodule_count = serializers.IntegerField(read_only=True)
+    submodule_completed = serializers.IntegerField(read_only=True)
     class Meta:
         model = Module
-        fields = ['id', 'tenant', 'course', 'title', 'slug', 'description', 'order','submodules']
+        fields = ['id', 
+        'tenant', 
+        'course', 
+        'title', 
+        'slug', 
+        'description', 
+        'order',
+        #'submodules'
+        'submodule_count',
+        'submodule_completed',
+        ]
         read_only_fields = ['id', 'tenant', 'slug']
 
     def validate_title(self, value):
-        # Check uniqueness within the course
         course_slug = self.initial_data.get('course')
         if course_slug:
              if Module.objects.filter(course__slug=course_slug, title=value).exists():
@@ -52,15 +73,32 @@ class ModuleSerializer(serializers.ModelSerializer):
         return module
 
 class CourseSerializer(serializers.ModelSerializer):
-    modules = ModuleSerializer(many=True, read_only=True)
+    """
+    
+    """
+    
+    #modules = ModuleSerializer(many=True, read_only=True)
     created_by = serializers.CharField(source='created_by.username', read_only=True)
     tenant = serializers.SlugRelatedField(queryset=Tenant.objects.all(), slug_field='slug', required=False)
+    enrolled = serializers.BooleanField(read_only=True)
+    total_enrollments = serializers.IntegerField(read_only=True)
     class Meta:
         model = Course
         fields = [
-            'id', 'tenant', 'name','slug', 'description', 'price', 'is_free', 
-            'status', 'created_by', 
-            'created_at', 'updated_at', 'modules'
+            'id',
+            'tenant',
+            'name',
+            'slug',
+            'description',
+            'price',
+            'is_free',
+            'status', 
+            'created_by', 
+            'created_at',
+            'updated_at', 
+            'enrolled',
+            'total_enrollments'
+            #'modules'
         ]
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at', 'slug']
 
@@ -70,7 +108,7 @@ class CourseSerializer(serializers.ModelSerializer):
             if Course.objects.filter(name=value, tenant=request.user.tenant).exists():
                 raise serializers.ValidationError("Course with this name already exists.")
         return value
-    
+
     def create(self, validated_data):
         # Remove 'tenant' from validated_data if present, as we force it from the user
         validated_data.pop('tenant', None)

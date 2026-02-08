@@ -37,7 +37,7 @@ class Enrollment(AbstractTenantModel):
         related_name='assigned_enrollments',
         help_text="Admin who assigned this course (null for self-enrollment)"
     )
-
+   
     class Meta:
         unique_together = ['user', 'course']
         ordering = ['-enrolled_at']
@@ -55,9 +55,7 @@ class Enrollment(AbstractTenantModel):
         completed = self.submodule_progress.filter(is_completed=True).count()
         return round((completed / total_submodules) * 100, 2)
 
-
 class SubModuleProgress(AbstractTenantModel):
-
     enrollment = models.ForeignKey(
         Enrollment,
         on_delete=models.CASCADE,
@@ -77,6 +75,7 @@ class SubModuleProgress(AbstractTenantModel):
         blank=True,
         help_text="Score for assignment-type submodules (0-100)"
     )
+
     time_spent = models.DurationField(
         null=True,
         blank=True,
@@ -90,3 +89,4 @@ class SubModuleProgress(AbstractTenantModel):
     def __str__(self):
         status = "✓" if self.is_completed else "❌"
         return f"{status} {self.enrollment.user.email} - {self.submodule.title}"
+
