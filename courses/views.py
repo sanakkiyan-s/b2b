@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
+import logging
 
 from .models import Course, Module, SubModule
 from django.db.models import Exists, OuterRef, Count,Q
@@ -14,8 +15,8 @@ from enrollments.models import Enrollment
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from .pagination import StandardResultsSetPagination
 from .filters import CourseFilter
-# Create your views here.
 
+logger = logging.getLogger(__name__)
 
 #==========Course Structure ViewSets==========
 
@@ -43,18 +44,33 @@ class CourseViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
-        #set_current_user(self.request.user)
-        queryset = Course.objects.for_current_user()#.exclude(enrollments__user=self.request.user)
+        user = self.request.user
+        logger.debug(f"User {user.email} accessing courses list")
+        
+        queryset = Course.objects.for_current_user()
         queryset = queryset.annotate(
-            enrolled=Exists(Enrollment.objects.filter(user=self.request.user.id,course=OuterRef('pk'))),
+            enrolled=Exists(Enrollment.objects.filter(user=user.id, course=OuterRef('pk'))),
             total_enrollments=Count('enrollments')
-            )
-        if self.request.query_params.get('enrolled')=='true':
-            queryset = queryset.filter(enrollments__user=self.request.user)
+        )
+        
+        if self.request.query_params.get('enrolled') == 'true':
+            queryset = queryset.filter(enrollments__user=user)
+            logger.debug(f"Filtering enrolled courses for {user.email}")
+            
+        logger.debug(f"Returning {queryset.count()} courses")
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        course = serializer.save(created_by=self.request.user)
+        logger.info(f"Course created: '{course.name}' by {self.request.user.email}")
+    
+    def perform_update(self, serializer):
+        course = serializer.save()
+        logger.info(f"Course updated: '{course.name}' by {self.request.user.email}")
+    
+    def perform_destroy(self, instance):
+        logger.warning(f"Course deleted: '{instance.name}' by {self.request.user.email}")
+        instance.delete()
 
 
 

@@ -11,6 +11,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Count
 from django.utils import timezone
 from datetime import timedelta
+import logging
 
 from .serializers import UserSerializer, UserCreateSerializer, AuditLogSerializer
 from .models import AuditLog
@@ -22,6 +23,7 @@ from enrollments.models import Enrollment
 from payments.models import Payment
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -42,14 +44,26 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        logger.debug(f"User {user.email} ({user.role}) accessing users list")
+        
         if user.role == 'SUPER_ADMIN':
             queryset = User.objects.all()
+            logger.debug("SUPER_ADMIN: returning all users")
         elif user.role == 'TENANT_ADMIN':
             queryset = User.objects.filter(tenant=user.tenant)
+            logger.debug(f"TENANT_ADMIN: returning users for tenant {user.tenant}")
         elif user.role == 'TENANT_USER':
             queryset = User.objects.filter(id=user.id)
+            logger.debug("TENANT_USER: returning only self")
+        else:
+            queryset = User.objects.none()
+            logger.warning(f"Unknown role {user.role} for user {user.email}")
 
         return queryset
+    
+    def perform_create(self, serializer):
+        user = serializer.save()
+        logger.info(f"New user created: {user.email} by {self.request.user.email}")
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
@@ -152,6 +166,7 @@ class LogoutView(APIView):
         try:
             refresh_token = request.data.get('refresh')
             if not refresh_token:
+                logger.warning(f"Logout failed: no refresh token provided by {request.user.email}")
                 return Response(
                     {'error': 'Refresh token is required'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -160,11 +175,13 @@ class LogoutView(APIView):
             token = RefreshToken(refresh_token)
             token.blacklist()
             
+            logger.info(f"User {request.user.email} logged out successfully")
             return Response(
                 {'message': 'Successfully logged out'},
                 status=status.HTTP_205_RESET_CONTENT
             )
         except TokenError as e:
+            logger.warning(f"Logout failed for {request.user.email}: invalid or expired token")
             return Response(
                 {'error': 'Invalid or expired token'},
                 status=status.HTTP_400_BAD_REQUEST
