@@ -9,8 +9,18 @@ User = get_user_model()
 class TenantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tenant
-        fields = ['id', 'name', 'slug', 'created_at', 'is_active']
-        read_only_fields = ['id', 'slug', 'created_at']
+        fields = [
+            'id', 
+            'name', 
+            'slug', 
+            'created_at', 
+            'is_active'
+            ]
+        read_only_fields = [
+            'id', 
+            'slug', 
+            'created_at'
+            ]
 
 
 

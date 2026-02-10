@@ -4,11 +4,21 @@ from django.contrib.auth import get_user_model
 from rest_framework.validators import UniqueValidator
 from tenants.models import Tenant
 from skills.models import UserSkill
-from skills.serializers import UserSkillSerializer
 
 
 User = get_user_model()
 
+class UserSkillsSerializer(serializers.ModelSerializer):
+    skill_name = serializers.CharField(source='skill.name', read_only=True)
+    class Meta:
+        model = UserSkill
+        fields = [
+            'skill_name', 
+            'proficiency', 
+            'courses_completed', 
+
+            ]
+        read_only_fields= fields
 
 class UserSerializer(serializers.ModelSerializer):
     tenant = serializers.SlugRelatedField(
@@ -16,12 +26,25 @@ class UserSerializer(serializers.ModelSerializer):
         slug_field='slug', 
         required=False
     )
-    get_skills = UserSkillSerializer(many=True, read_only=True)
+    get_skills = UserSkillsSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'tenant', 'get_skills']
-        read_only_fields = ['id', 'role', 'tenant'] 
+        fields = [
+            'id', 
+            'username', 
+            'email', 
+            'first_name', 
+            'last_name', 
+            'role', 
+            'tenant', 
+            'get_skills'
+        ]
+        read_only_fields = [
+            'id',
+            'role', 
+            'tenant'
+            ] 
 
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -34,7 +57,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'username', 'password', 'first_name', 'last_name', 'tenant', 'role']
+        fields = [
+            'email', 
+            'username', 
+            'password', 
+            'first_name', 
+            'last_name', 
+            'tenant', 
+            'role'
+        ]
 
     def validate_tenant(self, value):
         request = self.context.get('request')
@@ -92,6 +123,16 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AuditLog
-        fields = ['id', 'user', 'user_email', 'action', 'model_name', 'object_id', 
-                  'object_repr', 'details', 'ip_address', 'timestamp']
+        fields = [
+            'id', 
+            'user', 
+            'user_email', 
+            'action', 
+            'model_name', 
+            'object_id', 
+            'object_repr', 
+            'details', 
+            'ip_address', 
+            'timestamp'
+            ]
         read_only_fields = fields

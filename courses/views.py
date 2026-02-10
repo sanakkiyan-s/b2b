@@ -7,7 +7,9 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Course, Module, SubModule
-from django.db.models import Exists, OuterRef, Count,Q
+from django.db.models import Exists, OuterRef, Count, Q, Case, When, Value, F
+from django.db.models.functions import Cast
+from django.db.models import FloatField
 from .serializers import CourseSerializer, ModuleSerializer, SubModuleSerializer
 from accounts.permissions import IsTenantAdmin, IsTenantUser , only_tenant_admin
 from enrollments.models import Enrollment
@@ -43,18 +45,37 @@ class CourseViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
-        #set_current_user(self.request.user)
+
         queryset = Course.objects.for_current_user()#.exclude(enrollments__user=self.request.user)
+        
         queryset = queryset.annotate(
-            enrolled=Exists(Enrollment.objects.filter(user=self.request.user.id,course=OuterRef('pk'))),
-            total_enrollments=Count('enrollments')
+            enrolled=Exists(Enrollment.objects.filter(user=self.request.user.id, course=OuterRef('pk'))),
+            total_enrollments=Count('enrollments', distinct=True),
+            total_submodules=Count('modules__submodules', distinct=True),
+            completed_submodules=Count(
+                'modules__submodules',
+                filter=Q(
+                    modules__submodules__user_progress__is_completed=True,
+                    modules__submodules__user_progress__enrollment__user=self.request.user
+                ),
+                distinct=True
             )
+        ).annotate(
+            progress=Case(
+                When(total_submodules=0, then=Value(0.0)),
+                default=Cast(F('completed_submodules'), FloatField()) / Cast(F('total_submodules'), FloatField()) * 100,
+                output_field=FloatField()
+            )
+        )
+        
         if self.request.query_params.get('enrolled')=='true':
             queryset = queryset.filter(enrollments__user=self.request.user)
         return queryset
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+    
+    
 
 
 
@@ -65,8 +86,8 @@ class ModuleViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [only_tenant_admin()]
-        permission_classes = [IsTenantUser, IsTenantAdmin]
+            return [IsTenantAdmin()]
+        permission_classes = [IsTenantUser]
         return [permission() for permission in permission_classes]
     
     def get_queryset(self): 

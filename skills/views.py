@@ -32,6 +32,7 @@ class CourseSkillViewSet(viewsets.ModelViewSet):
     - TenantUser: Read-only access
     - SuperAdmin: Access all associations
     """
+
     queryset = CourseSkill.objects.all()
     serializer_class = CourseSkillSerializer
 

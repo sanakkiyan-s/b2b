@@ -15,6 +15,7 @@ class Course(AbstractTenantModel):
 
     name = models.CharField(max_length=255)
     slug = models.SlugField(blank=True)
+    content_picture_url=models.URLField(default="https://via.placeholder.com/150")
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     is_free = models.BooleanField(default=True)

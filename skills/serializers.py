@@ -14,8 +14,21 @@ class SkillSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Skill
-        fields = ['id', 'tenant', 'name', 'slug', 'description', 'is_active', 'created_at']
-        read_only_fields = ['id', 'tenant', 'slug', 'created_at']
+        fields = [
+            'id', 
+            'tenant', 
+            'name', 
+            'slug', 
+            'description', 
+            'is_active', 
+            'created_at'
+            ]
+        read_only_fields = [
+            'id', 
+            'tenant', 
+            'slug', 
+            'created_at'
+            ]
 
     def validate_name(self, value):
         request = self.context.get('request')
@@ -56,8 +69,21 @@ class CourseSkillSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CourseSkill
-        fields = ['id', 'tenant', 'course', 'course_name', 'skill', 'skill_name', 'weight']
-        read_only_fields = ['id', 'tenant', 'course_name', 'skill_name']
+        fields = [
+            'id', 
+            'tenant', 
+            'course', 
+            'course_name', 
+            'skill', 
+            'skill_name', 
+            'weight'
+            ]
+        read_only_fields = [
+            'id', 
+            'tenant', 
+            'course_name', 
+            'skill_name'
+            ]
 
     def validate(self, attrs):
         request = self.context.get('request')
@@ -97,7 +123,14 @@ class UserSkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserSkill
         fields = [
-            'id', 'user', 'user_email', 'skill', 'skill_name', 'skill_slug',
-            'proficiency', 'courses_completed', 'last_updated'
-        ]
-        read_only_fields = fields  # Entirely read-only, updated by signals
+            'id', 
+            'user', 
+            'user_email', 
+            'skill', 
+            'skill_name', 
+            'skill_slug',
+            'proficiency', 
+            'courses_completed', 
+            'last_updated'
+            ]
+        read_only_fields = fields  

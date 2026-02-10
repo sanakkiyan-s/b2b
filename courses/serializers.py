@@ -45,18 +45,23 @@ class ModuleSerializer(serializers.ModelSerializer):
     submodule_completed = serializers.IntegerField(read_only=True)
     class Meta:
         model = Module
-        fields = ['id', 
-        'tenant', 
-        'course', 
-        'title', 
-        'slug', 
-        'description', 
-        'order',
-        #'submodules'
-        'submodule_count',
-        'submodule_completed',
+        fields = [
+            'id', 
+            'tenant', 
+            'course', 
+            'title', 
+            'slug', 
+            'description', 
+            'order',
+            #'submodules'
+            'submodule_count',
+            'submodule_completed',
         ]
-        read_only_fields = ['id', 'tenant', 'slug']
+        read_only_fields = [
+            'id', 
+            'tenant', 
+            'slug'
+            ]
 
     def validate_title(self, value):
         course_slug = self.initial_data.get('course')
@@ -73,15 +78,13 @@ class ModuleSerializer(serializers.ModelSerializer):
         return module
 
 class CourseSerializer(serializers.ModelSerializer):
-    """
-    
-    """
     
     #modules = ModuleSerializer(many=True, read_only=True)
     created_by = serializers.CharField(source='created_by.username', read_only=True)
     tenant = serializers.SlugRelatedField(queryset=Tenant.objects.all(), slug_field='slug', required=False)
     enrolled = serializers.BooleanField(read_only=True)
     total_enrollments = serializers.IntegerField(read_only=True)
+    progress = serializers.FloatField(read_only=True)
     class Meta:
         model = Course
         fields = [
@@ -89,6 +92,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'tenant',
             'name',
             'slug',
+            'content_picture_url',
             'description',
             'price',
             'is_free',
@@ -97,10 +101,17 @@ class CourseSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at', 
             'enrolled',
-            'total_enrollments'
+            'total_enrollments',
+            'progress'
             #'modules'
         ]
-        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at', 'slug']
+        read_only_fields = [
+            'id', 
+            'created_by', 
+            'created_at', 
+            'updated_at', 
+            'slug'
+            ]
 
     def validate_name(self, value):
         request = self.context.get('request')

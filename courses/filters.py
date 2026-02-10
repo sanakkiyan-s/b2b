@@ -4,9 +4,7 @@ from .models import Course
 
 class CourseFilter(django_filters.FilterSet):
     """
-    Filter for Course model.
-    
-    Usage examples:
+    examples:
     - /api/courses/?name=python
     - /api/courses/?status=PUBLISHED
     - /api/courses/?is_free=true
@@ -21,8 +19,8 @@ class CourseFilter(django_filters.FilterSet):
     max_price = django_filters.NumberFilter(field_name='price', lookup_expr='lte')
     created_after = django_filters.DateFilter(field_name='created_at', lookup_expr='gte')
     created_before = django_filters.DateFilter(field_name='created_at', lookup_expr='lte')
-
+    skill = django_filters.CharFilter(field_name='course_skills__skill__name', lookup_expr='icontains')
     class Meta:
         model = Course
-        fields = []  # All filters are explicitly defined above
+        fields = [] 
 

@@ -15,10 +15,22 @@ class SubModuleProgressSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubModuleProgress
         fields = [
-            'id', 'enrollment', 'submodule', 'submodule_title', 'submodule_type',
-            'is_completed', 'completed_at', 'score', 'time_spent'
+            'id', 
+            'enrollment', 
+            'submodule', 
+            'submodule_title', 
+            'submodule_type',
+            'is_completed', 
+            'completed_at', 
+            'score', 
+            'time_spent'
         ]
-        read_only_fields = ['id', 'completed_at', 'submodule_title', 'submodule_type']
+        read_only_fields = [
+            'id', 
+            'completed_at', 
+            'submodule_title', 
+            'submodule_type'
+            ]
 
 
 class EnrollmentListSerializer(serializers.ModelSerializer):
@@ -30,10 +42,23 @@ class EnrollmentListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Enrollment
         fields = [
-            'id', 'user', 'user_email', 'course', 'course_name', 'course_slug',
-            'status', 'progress_percentage', 'enrolled_at', 'completed_at'
+            'id', 
+            'user', 
+            'user_email', 
+            'course', 
+            'course_name', 
+            'course_slug',
+            'status', 
+            'progress_percentage', 
+            'enrolled_at', 
+            'completed_at'
         ]
-        read_only_fields = ['id', 'enrolled_at', 'completed_at', 'progress_percentage']
+        read_only_fields = [
+            'id', 
+            'enrolled_at', 
+            'completed_at', 
+            'progress_percentage'
+            ]
 
 
 class EnrollmentDetailSerializer(serializers.ModelSerializer):
@@ -47,9 +72,20 @@ class EnrollmentDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Enrollment
         fields = [
-            'id', 'tenant', 'user', 'user_email', 'course', 'course_name', 'course_slug',
-            'status', 'progress_percentage', 'enrolled_at', 'completed_at',
-            'assigned_by', 'assigned_by_email', 'submodule_progress'
+            'id', 
+            'tenant', 
+            'user', 
+            'user_email', 
+            'course', 
+            'course_name', 
+            'course_slug',
+            'status', 
+            'progress_percentage', 
+            'enrolled_at', 
+            'completed_at',
+            'assigned_by', 
+            'assigned_by_email', 
+            'submodule_progress'
         ]
         read_only_fields = fields
 
@@ -68,8 +104,19 @@ class EnrollmentCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Enrollment
-        fields = ['id', 'tenant', 'course', 'status', 'enrolled_at']
-        read_only_fields = ['id', 'tenant', 'status', 'enrolled_at']
+        fields = [
+            'id', 
+            'tenant', 
+            'course', 
+            'status', 
+            'enrolled_at'
+            ]
+        read_only_fields = [
+            'id', 
+            'tenant', 
+            'status', 
+            'enrolled_at'
+            ]
 
     def validate_course(self, value):
         request = self.context.get('request')

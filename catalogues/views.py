@@ -76,12 +76,12 @@ class CatalogueViewSet(viewsets.ModelViewSet):
         ],
         responses={200: {'description': 'Course removed successfully'}}
     )
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['delete'])
     def remove_course(self, request, slug=None):
         catalogue = self.get_object()
         try:
-            course_name = request.data.get('course')
-            course = Course.objects.get(name=course_name)
+            course_slug = request.data.get('course_slug')
+            course = Course.objects.get(slug=course_slug)
         except Course.DoesNotExist:
             return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
         

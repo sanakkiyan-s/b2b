@@ -60,6 +60,9 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             return Response([])
             
         payments = Payment.objects.for_current_user()
+        if request.user.role == 'SUPER_ADMIN':
+            if request.query_params.get('tenant'):
+                payments = payments.filter(tenant=request.query_params.get('tenant'))
         serializer = PaymentSerializer(payments, many=True)
         return Response(serializer.data)
 
@@ -203,8 +206,8 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({
                 'tenant_name': tenant.name,
                 'user_count': tenant.users.count(),
-                'course_count': tenant.courses.count(),
-                'enrollment_count': tenant.enrollments.count(),
+                'course_count': tenant.course_set.count(),
+                'enrollment_count': tenant.enrollment_set.count(),
                 'total_revenue': completed.aggregate(Sum('amount'))['amount__sum'] or 0,
                 'total_transactions': tenant_payments.count(),
                 'completed_payments': completed.count(),
@@ -220,8 +223,8 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             analytics.append({
                 'tenant_name': tenant.name,
                 'user_count': tenant.users.count(),
-                'course_count': tenant.courses.count(),
-                'enrollment_count': tenant.enrollments.count(),
+                'course_count': tenant.course_set.count(),
+                'enrollment_count': tenant.enrollment_set.count(),
                 'total_revenue': completed.aggregate(Sum('amount'))['amount__sum'] or 0,
                 'total_transactions': tenant_payments.count(),
                 'completed_payments': completed.count(),
