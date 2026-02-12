@@ -2,6 +2,20 @@
 
 stripe listen --forward-to localhost:8000/api/payments/webhook/
 
+celery beat 
+
+python -m celery -A b2b_course_platform beat -l info
+
+celery worker for windows we have to manaully create it on multiple terminal
+
+python -m celery -A b2b_course_platform worker -l info -P solo -Q default_queue --hostname=default_worker@%h
+
+python -m celery -A b2b_course_platform worker -l info -P solo -Q email_queue (chnge this name to create the multiple worker)--hostname=email_worker_@%h
+
+celery flower
+
+python -m celery -A b2b_course_platform flower
+
 superadmin
 
 {
@@ -102,4 +116,15 @@ users of tenant amazon make it user 1 and user2
     "first_name": "MS",
     "last_name": "Dhoni",
     "tenant": "amazon"
+}
+
+
+{
+    "email": "content@example.com",
+    "username": "content_mgr",
+    "password": "securePass123",
+    "first_name": "John",
+    "last_name": "Doe",
+    "role": "CONTENT_MANAGER",
+    "tenant": "acme-corp"
 }

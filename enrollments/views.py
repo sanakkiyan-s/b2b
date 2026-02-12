@@ -12,7 +12,7 @@ from .serializers import (
     SubModuleProgressSerializer,
     MarkCompleteSerializer
 )
-from accounts.permissions import IsTenantAdmin, IsTenantUser , only_tenant_admin
+from accounts.permissions import IsTenantAdmin, RolePermission 
 from courses.models import SubModule
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
@@ -35,19 +35,10 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'assign_course':
             return [IsTenantAdmin()]
-        if self.action in ['update', 'partial_update', 'destroy']:
-            return [IsTenantAdmin()]
-        return [IsTenantUser()]
+        return [RolePermission()]
 
     def get_queryset(self):
-        user = self.request.user
-        if user.role == 'SUPER_ADMIN':
-            return Enrollment.objects.all()
-        if user.role == 'TENANT_ADMIN' :
-            return Enrollment.objects.filter(tenant=user.tenant)
-        if user.role == 'TENANT_USER' :
-            return Enrollment.objects.filter(user=user, tenant=user.tenant)
-        return Enrollment.objects.none()
+        return Enrollment.objects.for_current_user()
 
     @action(detail=False, methods=['post'])
     def assign_course(self, request):
@@ -94,19 +85,10 @@ class SubModuleProgressViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = SubModuleProgressSerializer
 
     def get_permissions(self):
-        return [IsTenantUser()]
+        return [RolePermission()]
 
     def get_queryset(self):
-        user = self.request.user
-        if user.role == 'SUPER_ADMIN':
-            return SubModuleProgress.objects.all()
-        if user.role == 'TENANT_ADMIN' and user.tenant:
-            return SubModuleProgress.objects.filter(tenant=user.tenant)
-        if user.role == 'TENANT_USER' and user.tenant:
-            return SubModuleProgress.objects.filter(
-                enrollment__user=user,
-                tenant=user.tenant
-            )
+        return SubModuleProgress.objects.for_current_user()
 
     @action(detail=False, methods=['post'], url_path='mark-complete')
     def mark_complete(self, request):
@@ -133,7 +115,7 @@ class SubModuleProgressViewSet(viewsets.ReadOnlyModelViewSet):
 
         # Check permission
         user = request.user
-        if user.role == 'TENANT_USER' and enrollment.user != user:
+        if user.role_name == 'TENANT_USER' and enrollment.user != user:
             return Response(
                 {'error': 'You can only update your own progress'},
                 status=status.HTTP_403_FORBIDDEN

@@ -2,7 +2,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from .models import Skill, CourseSkill, UserSkill
 from .serializers import SkillSerializer, CourseSkillSerializer, UserSkillSerializer
-from accounts.permissions import IsTenantAdmin, IsTenantUser
+from accounts.permissions import RolePermission
 
 
 class SkillViewSet(viewsets.ModelViewSet):
@@ -17,9 +17,7 @@ class SkillViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsTenantAdmin()]
-        return [IsTenantUser()]
+        return [RolePermission()]
 
     def get_queryset(self):
         return Skill.objects.for_current_user()
@@ -37,9 +35,7 @@ class CourseSkillViewSet(viewsets.ModelViewSet):
     serializer_class = CourseSkillSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsTenantAdmin()]
-        return [IsTenantUser()]
+        return [RolePermission()]
 
     def get_queryset(self):
         return CourseSkill.objects.for_current_user()
@@ -56,14 +52,14 @@ class UserSkillViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSkillSerializer
 
     def get_permissions(self):
-        return [IsTenantUser()]
+        return [RolePermission()]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'SUPER_ADMIN':
+        if user.role_name == 'SUPER_ADMIN':
             return UserSkill.objects.all()
-        if user.role == 'TENANT_ADMIN' and user.tenant:
+        if user.role_name == 'TENANT_ADMIN' and user.tenant:
             return UserSkill.objects.filter(tenant=user.tenant)
-        if user.role == 'TENANT_USER' and user.tenant:
+        if user.role_name == 'TENANT_USER' and user.tenant:
             return UserSkill.objects.filter(user=user, tenant=user.tenant)
         return UserSkill.objects.none()

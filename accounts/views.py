@@ -12,16 +12,34 @@ from django.db.models import Sum, Count
 from django.utils import timezone
 from datetime import timedelta
 
-from .serializers import UserSerializer, UserCreateSerializer, AuditLogSerializer
-from .models import AuditLog
+from .serializers import UserSerializer, UserCreateSerializer, AuditLogSerializer, RoleSerializer, PermissionSerializer
+from .models import AuditLog, Role
 from .permissions import ManageUser, IsSuperAdmin
 from .filters import UserFilter
 from tenants.models import Tenant
 from courses.models import Course
 from enrollments.models import Enrollment
 from payments.models import Payment
+from payments.models import Payment
+from django.contrib.auth.models import Permission
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+from django.contrib.auth.tokens import default_token_generator
 
 User = get_user_model()
+
+
+class PermissionViewSet(viewsets.ModelViewSet):
+    """CRUD for permissions — Super Admins only."""
+    queryset = Permission.objects.all()
+    serializer_class = PermissionSerializer
+
+class RoleViewSet(viewsets.ModelViewSet):
+    """CRUD for roles — Super Admins only."""
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+    permission_classes = [IsSuperAdmin]
+    lookup_field = 'name'
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -42,11 +60,11 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'SUPER_ADMIN':
+        if user.role_name == 'SUPER_ADMIN':
             queryset = User.objects.all()
-        elif user.role == 'TENANT_ADMIN':
+        elif user.role_name == 'TENANT_ADMIN':
             queryset = User.objects.filter(tenant=user.tenant)
-        elif user.role == 'TENANT_USER':
+        else:
             queryset = User.objects.filter(id=user.id)
 
         return queryset
@@ -91,7 +109,7 @@ class PlatformMetricsView(APIView):
         # User metrics
         total_users = User.objects.count()
         active_users_7d = User.objects.filter(last_login__gte=last_7_days).count()
-        users_by_role = User.objects.values('role').annotate(count=Count('id'))
+        users_by_role = User.objects.values('role__name').annotate(count=Count('id'))
 
         # Tenant metrics
         total_tenants = Tenant.objects.count()
@@ -170,4 +188,20 @@ class LogoutView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-            
+
+class ActivateUserView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and default_token_generator.check_token(user, token):
+            user.is_active = True
+            user.save()
+            return Response({'message': 'Account activated successfully'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Activation link is invalid or expired'}, status=status.HTTP_400_BAD_REQUEST)

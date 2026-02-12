@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max_width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 10px 20px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #777;
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Purchase Confirmation</h2>
+        </div>
+        <div class="content">
+            <p>Hello,</p>
+            <p>Thank you for purchasing <strong>{{ course_name }}</strong>. We are excited to have you on board!</p>
+            
+            <p><strong>Order Details:</strong></p>
+            <ul>
+                <li>Amount Paid: {{ amount }}</li>
+                <li>Transaction ID: {{ transaction_id }}</li>
+                <li>Date: {{ date }}</li>
+            </ul>
+
+            {% if invoice_url %}
+            <p>You can download your invoice using the link below:</p>
+            <a href="{{ invoice_url }}" class="button">Download Invoice</a>
+            {% endif %}
+
+            <p>You can access your course immediately by logging into your dashboard.</p>
+        </div>
+        <div class="footer">
+            <p>If you have any questions, please contact our support team.</p>
+        </div>
+    </div>
+</body>
+</html>

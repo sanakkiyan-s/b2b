@@ -32,7 +32,7 @@ class StripeService:
                 payment_method_types=['card'],
                 line_items=[{
                     'price_data': {
-                        'currency': 'inr',  
+                        'currency': 'usd',  
                         'product_data': {
                             'name': course.name,
                             'description': course.description[:500] if course.description else f'Access to {course.name}',
@@ -57,6 +57,7 @@ class StripeService:
                     'course_slug': course.slug,
                     'tenant_id': str(user.tenant.id) if user.tenant else '',
                 },
+                invoice_creation={"enabled": True},
                 expires_at=None,  # Default 24hr expiration
             )
 
@@ -129,3 +130,35 @@ class StripeService:
             return stripe.Refund.create(**refund_params)
         except stripe.error.StripeError as e:
             raise Exception(f"Refund failed: {str(e)}")
+
+    @staticmethod
+    def get_receipt_url(payment_intent_id: str) -> Optional[str]:
+        """
+        Retrieve the receipt URL from a PaymentIntent.
+        """
+        try:
+            payment_intent = StripeService.retrieve_payment_intent(payment_intent_id)
+            if payment_intent.latest_charge:
+                 # Check if latest_charge is an ID (string) or object.
+                 # Expand likely required if it's an ID, but let's try retrieving the charge.
+                 charge_id = payment_intent.latest_charge
+                 if isinstance(charge_id, str):
+                     charge = stripe.Charge.retrieve(charge_id)
+                     return charge.receipt_url
+                 else:
+                     # It's already an object
+                     return charge_id.receipt_url
+            return None
+        except Exception:
+            return None
+
+    @staticmethod
+    def get_invoice_pdf_url(invoice_id: str) -> Optional[str]:
+        """
+        Retrieve the hosted invoice PDF URL from an invoice ID.
+        """
+        try:
+            invoice = stripe.Invoice.retrieve(invoice_id)
+            return invoice.invoice_pdf
+        except Exception:
+            return None

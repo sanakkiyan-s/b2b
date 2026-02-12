@@ -19,9 +19,10 @@ from .serializers import (
 )
 from .stripe_service import StripeService
 from accounts.models import User
-from accounts.permissions import IsSuperAdmin, IsTenantAdmin, IsTenantUser
+from accounts.permissions import IsSuperAdmin, IsTenantAdmin, RolePermission
 from courses.models import Course
 from enrollments.models import Enrollment
+from accounts.tasks import send_purchase_confirmation_email
 
 
 from drf_spectacular.utils import extend_schema
@@ -39,16 +40,10 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
     def get_permissions(self):
         if self.action in ['all_tenant_payments','revenue_analytics']:
             return [IsTenantAdmin()]
-        return [IsTenantUser()]
+        return [RolePermission()]
 
     def get_queryset(self):
-        user = self.request.user
-        if user.role == 'SUPER_ADMIN':
-            return Payment.objects.all()
-        if user.role == 'TENANT_ADMIN' and user.tenant:
-            return Payment.objects.filter(tenant=user.tenant)
-        if user.role == 'TENANT_USER' and user.tenant:
-            return Payment.objects.filter(user=user, tenant=user.tenant)
+        return Payment.objects.for_current_user()
 
 
     @action(detail=False, methods=['get'], url_path='tenant-payments')
@@ -60,7 +55,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             return Response([])
             
         payments = Payment.objects.for_current_user()
-        if request.user.role == 'SUPER_ADMIN':
+        if request.user.role_name == 'SUPER_ADMIN':
             if request.query_params.get('tenant'):
                 payments = payments.filter(tenant=request.query_params.get('tenant'))
         serializer = PaymentSerializer(payments, many=True)
@@ -197,7 +192,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
         """
 
         analytics = []
-        if request.user.role == "SUPER_ADMIN":
+        if request.user.role_name == 'SUPER_ADMIN':
             tenants = Tenant.objects.filter(is_active=True)
         else:
             tenant = Tenant.objects.get(id=request.user.tenant.id)
@@ -238,7 +233,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
         all_completed = Payment.objects.filter(status=Payment.Status.COMPLETED)
         platform_total = {
             'tenant_name': 'PLATFORM_TOTAL',
-            'user_count': User.objects.exclude(role__in=['SUPER_ADMIN', 'TENANT_ADMIN']).count(),
+            'user_count': User.objects.exclude(role__name__in=['SUPER_ADMIN', 'TENANT_ADMIN']).count(),
             'course_count': Course.objects.count(),
             'enrollment_count': Enrollment.objects.count(),
             'total_revenue': all_completed.aggregate(Sum('amount'))['amount__sum'] or 0,
@@ -273,6 +268,7 @@ class StripeWebhookView(APIView):
     """
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = []
 
     def post(self, request):
         payload = request.body
@@ -315,11 +311,30 @@ class StripeWebhookView(APIView):
         payment.save()
 
         # Create enrollment
+
         Enrollment.objects.get_or_create(
             tenant=payment.tenant,
             user=payment.user,
             course=payment.course,
             defaults={'status': 'NOT_STARTED'}
+        )
+
+        # Send confirmation email
+        invoice_id = session.get('invoice')
+        invoice_url = None
+        
+        if invoice_id:
+            invoice_url = StripeService.get_invoice_pdf_url(invoice_id)
+            
+        if not invoice_url:
+             invoice_url = StripeService.get_receipt_url(payment_intent_id)
+
+        send_purchase_confirmation_email.delay(
+            user_email=payment.user.email,
+            course_name=payment.course.name,
+            amount=str(payment.amount),
+            transaction_id=payment.stripe_payment_intent_id,
+            invoice_url=invoice_url
         )
 
     def handle_checkout_expired(self, session):

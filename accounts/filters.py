@@ -1,5 +1,6 @@
 import django_filters
 from django.contrib.auth import get_user_model
+from .models import Role
 
 User = get_user_model()
 
@@ -16,7 +17,7 @@ class UserFilter(django_filters.FilterSet):
     username = django_filters.CharFilter(lookup_expr='icontains')
     first_name = django_filters.CharFilter(lookup_expr='icontains')
     last_name = django_filters.CharFilter(lookup_expr='icontains')
-    role = django_filters.ChoiceFilter(choices=User.Role.choices)
+    role = django_filters.CharFilter(field_name='role__name', lookup_expr='exact')
     is_active = django_filters.BooleanFilter()
     tenant = django_filters.CharFilter(field_name='tenant__slug', lookup_expr='exact')
     joined_after = django_filters.DateFilter(field_name='date_joined', lookup_expr='gte')

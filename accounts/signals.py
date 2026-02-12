@@ -39,7 +39,7 @@ def create_audit_log(action, model_name, instance, user=None):
     if user is None:
         user = get_current_user()
     
-    if user and user.role not in ['SUPER_ADMIN', 'TENANT_ADMIN']:
+    if user and user.role_name not in ['SUPER_ADMIN', 'TENANT_ADMIN']:
         return
     
     request = get_current_request()
@@ -57,7 +57,7 @@ def create_audit_log(action, model_name, instance, user=None):
 
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
-    if user.role in ['SUPER_ADMIN', 'TENANT_ADMIN']:
+    if user.role_name in ['SUPER_ADMIN', 'TENANT_ADMIN']:
         AuditLog.objects.create(
             user=user,
             action=AuditLog.Action.LOGIN,
@@ -69,7 +69,7 @@ def log_user_login(sender, request, user, **kwargs):
 
 @receiver(user_logged_out)
 def log_user_logout(sender, request, user, **kwargs):
-    if user and user.role in ['SUPER_ADMIN', 'TENANT_ADMIN']:
+    if user and user.role_name in ['SUPER_ADMIN', 'TENANT_ADMIN']:
         AuditLog.objects.create(
             user=user,
             action=AuditLog.Action.LOGOUT,

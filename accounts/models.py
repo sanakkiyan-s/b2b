@@ -1,8 +1,30 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager, Permission
 from django.utils.translation import gettext_lazy as _
 # Create your models here.
 from tenants.models import Tenant
+
+
+class Role(models.Model):
+    """Dynamic role model — admins can create roles at runtime."""
+    name = models.CharField(max_length=50, unique=True)
+    description = models.TextField(blank=True)
+    permissions = models.ManyToManyField(
+        Permission,
+        blank=True,
+        related_name='roles',
+        help_text='Permissions granted to this role.'
+    )
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def has_perm(self, codename):
+        """Check if this role has a specific permission by codename."""
+        return self.permissions.filter(codename=codename).exists()
 
 class UserManager(BaseUserManager):
 
@@ -22,7 +44,14 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
-        extra_fields.setdefault('role', 'SUPER_ADMIN')
+
+        # Auto-assign SUPER_ADMIN role if not provided
+        if 'role' not in extra_fields or extra_fields['role'] is None:
+            role_obj, _ = Role.objects.get_or_create(name='SUPER_ADMIN', defaults={'description': 'Super Admin'})
+            extra_fields['role'] = role_obj
+        elif isinstance(extra_fields['role'], str):
+            role_obj, _ = Role.objects.get_or_create(name=extra_fields['role'], defaults={'description': extra_fields['role']})
+            extra_fields['role'] = role_obj
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError(_('Superuser must have is_staff=True.'))
@@ -33,11 +62,6 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    class Role(models.TextChoices):
-        SUPER_ADMIN = 'SUPER_ADMIN', _('Super Admin')
-        TENANT_ADMIN = 'TENANT_ADMIN', _('Tenant Admin')
-        TENANT_USER = 'TENANT_USER', _('Tenant User')
-
     email = models.EmailField(_('email address'), unique=True)
     username = models.CharField(max_length=150, unique=True)
     first_name = models.CharField(max_length=30, blank=True)
@@ -54,11 +78,28 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True
     )
 
-    role = models.CharField(
-        max_length=20, 
-        choices=Role.choices, 
-        default=Role.TENANT_USER
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users'
     )
+
+    @property
+    def role_name(self):
+        print(self.role.name)
+        return self.role.name if self.role else ''
+
+    def has_role_perm(self, codename):
+        """Check if user's role grants a specific permission codename.
+        Super Admins bypass all checks.
+        """
+        if not self.role:
+            return False
+        if self.role.name == 'SUPER_ADMIN':
+            return True
+        return self.role.has_perm(codename)
 
     objects = UserManager()
 

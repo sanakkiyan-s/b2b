@@ -11,7 +11,7 @@ from django.db.models import Exists, OuterRef, Count, Q, Case, When, Value, F
 from django.db.models.functions import Cast
 from django.db.models import FloatField
 from .serializers import CourseSerializer, ModuleSerializer, SubModuleSerializer
-from accounts.permissions import IsTenantAdmin, IsTenantUser , only_tenant_admin
+from accounts.permissions import RolePermission 
 from enrollments.models import Enrollment
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from .pagination import StandardResultsSetPagination
@@ -39,9 +39,7 @@ class CourseViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']  # Default ordering
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [only_tenant_admin()]
-        permission_classes = [IsTenantUser]
+        permission_classes = [RolePermission]
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
@@ -85,9 +83,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     lookup_field = 'slug'
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsTenantAdmin()]
-        permission_classes = [IsTenantUser]
+        permission_classes = [RolePermission]
         return [permission() for permission in permission_classes]
     
     def get_queryset(self): 
@@ -114,9 +110,7 @@ class SubModuleViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     lookup_field = 'slug'
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsTenantAdmin()]
-        permission_classes = [IsTenantUser]
+        permission_classes = [RolePermission]
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
