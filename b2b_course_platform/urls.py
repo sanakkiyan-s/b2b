@@ -27,6 +27,10 @@ urlpatterns = [
     path('api/', include('skills.urls')),
     path('api/', include('enrollments.urls')),
     path('api/', include('payments.urls')),
+
+    #reset password 
+    path('api/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
+
     # Swagger Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

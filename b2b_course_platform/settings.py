@@ -60,6 +60,8 @@ INSTALLED_APPS = [
     'payments',
 
     # 'celery',
+
+    'django_rest_passwordreset',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'

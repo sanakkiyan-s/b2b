@@ -9,6 +9,12 @@ from skills.models import Skill, CourseSkill, UserSkill
 from enrollments.models import Enrollment
 from payments.models import Payment
 import threading
+from django.dispatch import receiver
+from django.urls import reverse
+from .tasks import send_password_reset_email
+
+from django_rest_passwordreset.signals import reset_password_token_created
+
 
 def get_client_ip(request):
     if request is None:
@@ -115,3 +121,29 @@ for model_class, model_name in AUDITED_MODELS:
     
     post_save.connect(make_create_handler(model_name), sender=model_class, weak=False)
     post_delete.connect(make_delete_handler(model_name), sender=model_class, weak=False)
+
+
+
+@receiver(reset_password_token_created)
+def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
+    """
+    Handles password reset tokens
+    When a token is created, an e-mail needs to be sent to the user
+    :param sender: View Class that sent the signal
+    :param instance: View Instance that sent the signal
+    :param reset_password_token: Token Model Object
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    
+    # send an e-mail to the user
+    task_context = {
+        'username': reset_password_token.user.username,
+        'email': reset_password_token.user.email,
+        'reset_password_url': "{}?token={}".format(
+            instance.request.build_absolute_uri(reverse('password_reset:reset-password-confirm')),
+            reset_password_token.key)
+    }
+    
+    send_password_reset_email.delay(reset_password_token.user.email, task_context)

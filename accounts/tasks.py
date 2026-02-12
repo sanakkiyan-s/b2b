@@ -3,7 +3,7 @@ import time
 import socket
 
 from datetime import datetime
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 
@@ -108,3 +108,35 @@ def send_invitation_email(user_email, first_name, activation_url):
     )
     
     return f"Invitation email sent to {user_email}"
+
+@shared_task(queue="email_queue")
+def send_password_reset_email(user_email, context):
+    """
+    Task to send password reset email.
+    """
+    html_message = render_to_string('accounts/email/password_reset_email.html', context)
+    plaintext_message = render_to_string('accounts/email/password_reset_email.txt', context)
+
+    send_mail(
+        subject="Password Reset for {title}".format(title="B2B Course Platform"),
+        message=f"Hello {context['username']}, you have requested a password reset. Please reset your password: {context['reset_password_url']}",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user_email],
+        html_message=html_message,
+        fail_silently=False,
+    )
+
+    msg = EmailMultiAlternatives(
+        # title:
+        "Password Reset for {title}".format(title="B2B Course Platform"),
+        # message:
+        plaintext_message,
+        # from:
+        settings.DEFAULT_FROM_EMAIL,
+        # to:
+        [user_email]
+    )
+    msg.attach_alternative(html_message, "text/html")
+    msg.send()
+    
+    return f"Password reset email sent to {user_email}"

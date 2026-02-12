@@ -1,4 +1,7 @@
+from django.contrib.auth import update_session_auth_hash
+from .serializers import ChangePasswordSerializer
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -9,10 +12,20 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Count
+from drf_spectacular.utils import extend_schema
 from django.utils import timezone
 from datetime import timedelta
 
-from .serializers import UserSerializer, UserCreateSerializer, AuditLogSerializer, RoleSerializer, PermissionSerializer
+from .serializers import( UserSerializer, 
+                            UserCreateSerializer, 
+                            AuditLogSerializer, 
+                            RoleSerializer, 
+                            PermissionSerializer, 
+                            ChangePasswordSerializer
+                        #  PasswordResetRequestSerializer,
+                        #  PasswordResetConfirmSerializer
+                        )
+from .tasks import send_password_reset_email
 from .models import AuditLog, Role
 from .permissions import ManageUser, IsSuperAdmin
 from .filters import UserFilter
@@ -22,8 +35,8 @@ from enrollments.models import Enrollment
 from payments.models import Payment
 from payments.models import Payment
 from django.contrib.auth.models import Permission
-from django.utils.http import urlsafe_base64_decode
-from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.encoding import force_str, force_bytes
 from django.contrib.auth.tokens import default_token_generator
 
 User = get_user_model()
@@ -205,3 +218,48 @@ class ActivateUserView(APIView):
             return Response({'message': 'Account activated successfully'}, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Activation link is invalid or expired'}, status=status.HTTP_400_BAD_REQUEST)
+
+# class PasswordResetRequestView(APIView):
+    # permission_classes = [permissions.AllowAny]
+
+    # def post(self, request):
+    #     serializer = ResetPasswordEmailSerializer(data=request.data)
+    #     if serializer.is_valid():
+    #         email = serializer.validated_data['email']
+    #         user = User.objects.get(email=email)
+            
+    #         token = default_token_generator.make_token(user)
+    #         uid = urlsafe_base64_encode(force_bytes(user.pk))
+    #         reset_url = f"{settings.FRONTEND_URL}/api/reset-password/{uid}/{token}/"
+            
+    #         send_password_reset_email.delay(user.email, reset_url)
+            
+    #         return Response({'message': 'Password reset link sent to email',"link":reset_url}, status=status.HTTP_200_OK)
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# class PasswordResetConfirmView(APIView):
+#     permission_classes = [permissions.AllowAny]
+
+#     def post(self, request):
+#         serializer = PasswordResetConfirmSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({'message': 'Password has been reset successfully'}, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=ChangePasswordSerializer, responses={200: None})
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            if user.check_password(serializer.data.get('old_password')):
+                user.set_password(serializer.data.get('new_password'))
+                user.save()
+                return Response({'message': 'Password changed successfully.'}, status=status.HTTP_200_OK)
+            return Response({'error': 'Incorrect old password.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+

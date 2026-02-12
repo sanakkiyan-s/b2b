@@ -11,7 +11,10 @@ from .views import (
     LogoutView, 
     RoleViewSet, 
     PermissionViewSet,
-    ActivateUserView
+    ActivateUserView,
+    ChangePasswordView
+    # PasswordResetRequestView,
+    # PasswordResetConfirmView
 )
 
 router = DefaultRouter()
@@ -34,4 +37,11 @@ urlpatterns = [
 
     # Platform Metrics (SuperAdmin only)
     path('platform-metrics/', PlatformMetricsView.as_view(), name='platform-metrics'),
+
+    # Password Reset
+    path('change_password/', ChangePasswordView.as_view(), name='change_password'),
+
+
+   # path('auth/password-reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    #path('auth/password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
 ]
