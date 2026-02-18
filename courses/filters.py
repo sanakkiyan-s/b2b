@@ -20,6 +20,13 @@ class CourseFilter(django_filters.FilterSet):
     created_after = django_filters.DateFilter(field_name='created_at', lookup_expr='gte')
     created_before = django_filters.DateFilter(field_name='created_at', lookup_expr='lte')
     skill = django_filters.CharFilter(field_name='course_skills__skill__name', lookup_expr='icontains')
+    enrolled = django_filters.BooleanFilter(method='filter_enrolled')
+
+    def filter_enrolled(self, queryset, name, value):
+        if value and self.request.user.is_authenticated:
+            return queryset.filter(enrollments__user=self.request.user)
+        return queryset
+
     class Meta:
         model = Course
         fields = [] 

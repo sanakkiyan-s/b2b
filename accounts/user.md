@@ -10,7 +10,7 @@ celery worker for windows we have to manaully create it on multiple terminal
 
 python -m celery -A b2b_course_platform worker -l info -P solo -Q default_queue --hostname=default_worker@%h
 
-python -m celery -A b2b_course_platform worker -l info -P solo -Q email_queue (chnge this name to create the multiple worker)--hostname=email_worker_@%h
+python -m celery -A b2b_course_platform worker -l info -P solo -Q email_queue --hostname=email_worker_@%h
 
 celery flower
 

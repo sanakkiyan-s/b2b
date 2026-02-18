@@ -1,0 +1,113 @@
+
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    # command: gunicorn b2b_course_platform.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE=postgres
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=b2b_db
+      - DB_USER=b2b_user
+      - DB_PASSWORD=b2b_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CACHE_URL=redis://redis:6379/1
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=b2b_user
+      - POSTGRES_PASSWORD=b2b_password
+      - POSTGRES_DB=b2b_db
+
+  redis:
+    image: redis:7-alpine
+
+  celery_default:
+    build: .
+    command: celery -A b2b_course_platform worker -l info -Q default_queue --hostname=default@%h
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=django-insecure-docker-dev-key
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CACHE_URL=redis://redis:6379/1
+      - DATABASE=postgres
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=b2b_db
+      - DB_USER=b2b_user
+      - DB_PASSWORD=b2b_password
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      - db
+      - redis
+
+  celery_email:
+    build: .
+    command: celery -A b2b_course_platform worker -l info -Q email_queue --hostname=email@%h
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=django-insecure-docker-dev-key
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CACHE_URL=redis://redis:6379/1
+      - DATABASE=postgres
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=b2b_db
+      - DB_USER=b2b_user
+      - DB_PASSWORD=b2b_password
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      - db
+      - redis
+
+  flower:
+    build: .
+    command: celery -A b2b_course_platform flower --port=5555
+    ports:
+      - "5555:5555"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=django-insecure-docker-dev-key
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - celery_default
+      - celery_email
+
+volumes:
+  postgres_data:

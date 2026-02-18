@@ -1,4 +1,4 @@
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, m2m_changed
 from django.dispatch import receiver
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from .models import AuditLog, User
@@ -12,9 +12,9 @@ import threading
 from django.dispatch import receiver
 from django.urls import reverse
 from .tasks import send_password_reset_email
-
+from .models import Role
 from django_rest_passwordreset.signals import reset_password_token_created
-
+from django.db.models import Q
 
 def get_client_ip(request):
     if request is None:
@@ -147,3 +147,31 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
     }
     
     send_password_reset_email.delay(reset_password_token.user.email, task_context)
+
+
+# ==========================================
+# Permission Cache Invalidation Signals
+# ==========================================
+
+
+@receiver(m2m_changed, sender=Role.permissions.through)
+def invalidate_role_permissions_cache(sender, instance, action, **kwargs):
+    """When a Role's permissions change, invalidate cache for ALL users with that role."""
+    if action in ('post_add', 'post_remove', 'post_clear'):
+        for user in instance.users.all():
+            user.invalidate_permissions_cache()
+
+
+@receiver(post_save, sender=User)
+def invalidate_user_role_cache(sender, instance, **kwargs):
+    """When a User's role changes, invalidate their permission cache."""
+    if kwargs.get('update_fields') is None or 'role' in (kwargs.get('update_fields') or []):
+        instance.invalidate_permissions_cache()
+
+
+@receiver(post_save,sender=Course)
+def invalidate_course_cache(sender,instance,**kwargs):
+    """When a Course is created or updated, invalidate the course cache."""
+    tenant_id = instance.tenant.id 
+    cache.delete_pattern(f"course_list_{tenant_id}_*")
+    cache.delete_pattern(f"course_list_system_*")

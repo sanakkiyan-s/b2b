@@ -24,7 +24,7 @@ class CatalogueViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
-        return Catalogue.objects.for_current_user()
+        return Catalogue.objects.for_current_user().select_related('tenant')
 
 
     def perform_create(self, serializer):
@@ -33,7 +33,7 @@ class CatalogueViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def courses(self, request, slug=None):
         catalogue = self.get_object()
-        courses = catalogue.courses.filter(status='PUBLISHED')
+        courses = catalogue.courses.filter(status='PUBLISHED').select_related('created_by')
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
 

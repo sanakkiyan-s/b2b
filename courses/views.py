@@ -16,6 +16,9 @@ from enrollments.models import Enrollment
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from .pagination import StandardResultsSetPagination
 from .filters import CourseFilter
+from django.conf import settings
+from django.core.cache import cache
+
 # Create your views here.
 
 
@@ -43,9 +46,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def get_queryset(self):
-
-        queryset = Course.objects.for_current_user()#.exclude(enrollments__user=self.request.user)
-        
+        queryset = Course.objects.for_current_user().select_related('created_by', 'tenant')
         queryset = queryset.annotate(
             enrolled=Exists(Enrollment.objects.filter(user=self.request.user.id, course=OuterRef('pk'))),
             total_enrollments=Count('enrollments', distinct=True),
@@ -66,12 +67,22 @@ class CourseViewSet(viewsets.ModelViewSet):
             )
         )
         
-        if self.request.query_params.get('enrolled')=='true':
-            queryset = queryset.filter(enrollments__user=self.request.user)
         return queryset
+
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        query_string = request.META.get('QUERY_STRING', '') 
+        tenant_id = request.user.tenant.id if request.user.tenant else 'system'
+        cache_key = f'course_list_{tenant_id}_{request.user.role.name}_{request.user.id}_{query_string}'
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response)
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=settings.PERMISSION_CACHE_TIMEOUT)
+        return response
     
     
 

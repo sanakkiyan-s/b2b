@@ -21,7 +21,9 @@ from .serializers import( UserSerializer,
                             AuditLogSerializer, 
                             RoleSerializer, 
                             PermissionSerializer, 
-                            ChangePasswordSerializer
+                            LogoutSerializer,
+                            ChangePasswordSerializer,
+                            ActivateUserSerializer
                         #  PasswordResetRequestSerializer,
                         #  PasswordResetConfirmSerializer
                         )
@@ -75,12 +77,13 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role_name == 'SUPER_ADMIN':
             queryset = User.objects.all()
+
         elif user.role_name == 'TENANT_ADMIN':
             queryset = User.objects.filter(tenant=user.tenant)
         else:
             queryset = User.objects.filter(id=user.id)
 
-        return queryset
+        return queryset.select_related('role','tenant').prefetch_related('user_skills__skill')
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
@@ -178,33 +181,32 @@ class LogoutView(APIView):
     Logout user by blacklisting their refresh token.
     """
     permission_classes = [permissions.IsAuthenticated]
-
+    serializer_class = LogoutSerializer
     def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        refresh_token = serializer.validated_data["refresh"]
+
         try:
-            refresh_token = request.data.get('refresh')
-            if not refresh_token:
-                return Response(
-                    {'error': 'Refresh token is required'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
             token = RefreshToken(refresh_token)
             token.blacklist()
-            
+
             return Response(
-                {'message': 'Successfully logged out'},
+                {"message": "Successfully logged out"},
                 status=status.HTTP_205_RESET_CONTENT
             )
-        except TokenError as e:
+
+        except TokenError:
             return Response(
-                {'error': 'Invalid or expired token'},
+                {"error": "Invalid or expired token"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
 
 class ActivateUserView(APIView):
     permission_classes = [permissions.AllowAny]
-
+    serializer_class = ActivateUserSerializer
     def get(self, request, uidb64, token):
         try:
             uid = force_str(urlsafe_base64_decode(uidb64))
@@ -215,10 +217,15 @@ class ActivateUserView(APIView):
         if user is not None and default_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            return Response({'message': 'Account activated successfully'}, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'Activation link is invalid or expired'}, status=status.HTTP_400_BAD_REQUEST)
+            serializer = self.get_serializer(
+                {"message": "Account activated successfully"}
+            )
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
+        serializer = self.get_serializer(
+            {"message": "Activation link is invalid or expired"}
+        )
+        return Response(serializer.data, status=status.HTTP_400_BAD_REQUEST)
 # class PasswordResetRequestView(APIView):
     # permission_classes = [permissions.AllowAny]
 
@@ -249,10 +256,10 @@ class ActivateUserView(APIView):
 
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-
+    serializer_class = ChangePasswordSerializer
     @extend_schema(request=ChangePasswordSerializer, responses={200: None})
     def post(self, request):
-        serializer = ChangePasswordSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             user = request.user
             if user.check_password(serializer.data.get('old_password')):

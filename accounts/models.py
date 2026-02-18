@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager, Permission
 from django.utils.translation import gettext_lazy as _
+from django.core.cache import cache
+from django.conf import settings
 # Create your models here.
 from tenants.models import Tenant
 
@@ -94,12 +96,32 @@ class User(AbstractBaseUser, PermissionsMixin):
     def has_role_perm(self, codename):
         """Check if user's role grants a specific permission codename.
         Super Admins bypass all checks.
+        Uses Redis cache to avoid repeated DB queries.
         """
         if not self.role:
             return False
         if self.role.name == 'SUPER_ADMIN':
             return True
-        return self.role.has_perm(codename)
+        
+        cache_key = f'user_perms_{self.id}'
+        cached_perms = cache.get(cache_key)
+        
+        if cached_perms is None:
+            # Cache miss — fetch from DB and store in Redis
+            cached_perms = list(
+                self.role.permissions.values_list('codename', flat=True)
+            )
+            cache.set(
+                cache_key,
+                cached_perms,
+                timeout=getattr(settings, 'PERMISSION_CACHE_TIMEOUT', 3600)
+            )
+        
+        return codename in cached_perms
+
+    def invalidate_permissions_cache(self):
+        """Clear cached permissions for this user."""
+        cache.delete(f'user_perms_{self.id}')
 
     objects = UserManager()
 

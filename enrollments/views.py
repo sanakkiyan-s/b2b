@@ -38,7 +38,23 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         return [RolePermission()]
 
     def get_queryset(self):
-        return Enrollment.objects.for_current_user()
+        return Enrollment.objects.for_current_user().select_related('course','user','assigned_by').prefetch_related('submodule_progress__submodule').annotate(
+            completed_submodules=Count('submodule_progress',filter=Q(
+                submodule_progress__is_completed=True,
+                submodule_progress__tenant=self.request.tenant,
+                submodule_progress__user=self.request.user,
+               ),distinct=True),
+            total_submodules=Count('course__modules__submodules',filter=Q(
+                course__tenant=self.request.tenant,
+                ),distinct=True)
+
+        ).annotate(
+            progress_percentage=Case(
+                When(total_submodules=0, then=Value(0.0)),
+                default=Cast(F('completed_submodules'), FloatField()) / Cast(F('total_submodules'), FloatField()) * 100,
+                output_field=FloatField()
+            )
+        )
 
     @action(detail=False, methods=['post'])
     def assign_course(self, request):

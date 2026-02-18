@@ -209,12 +209,27 @@ STRIPE_CANCEL_URL = f"{FRONTEND_URL}/payment/cancel"
 
 
 # CELERY
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Kolkata'
+
+
+# Cache (Redis)
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.environ.get('CACHE_URL', 'redis://localhost:6379/1'),  # DB 1 (Celery uses DB 0)
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'TIMEOUT': 3600,  # Default cache timeout: 1 hour
+    }
+}
+
+PERMISSION_CACHE_TIMEOUT = 3600  # 1 hour
 
 
 # Email

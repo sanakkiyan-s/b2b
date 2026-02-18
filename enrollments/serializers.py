@@ -37,8 +37,7 @@ class EnrollmentListSerializer(serializers.ModelSerializer):
     course_name = serializers.CharField(source='course.name', read_only=True)
     course_slug = serializers.CharField(source='course.slug', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
-    progress_percentage = serializers.ReadOnlyField()
-
+    progress_percentage = serializers.FloatField(read_only=True)
     class Meta:
         model = Enrollment
         fields = [

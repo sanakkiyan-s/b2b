@@ -43,7 +43,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
         return [RolePermission()]
 
     def get_queryset(self):
-        return Payment.objects.for_current_user()
+        return Payment.objects.for_current_user().select_related('user', 'course', 'tenant')
 
 
     @action(detail=False, methods=['get'], url_path='tenant-payments')
